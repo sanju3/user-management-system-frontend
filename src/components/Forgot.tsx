@@ -1,5 +1,5 @@
-import axios from "axios";
 import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import {
   Button,
@@ -7,40 +7,33 @@ import {
   Grid,
   Header,
   InputOnChangeData,
+  Loader,
 } from "semantic-ui-react";
-import auth from "../auth";
+import { getRandomString, updatePassword } from "../actions/userActons";
 
 const Forgot = () => {
-  const [username, setUserName] = useState("");
   const [random, setRandom] = useState("");
-  const [randomVisibility, setRandomVisibility] = useState(false);
-  const [randomGen, setRandomGen] = useState("");
-  const [randomGenErr, setRandomGenErr] = useState("");
-  const [randomGenMsg, setRandomGenMsg] = useState("");
-  const [counter, setCounter] = useState(0);
-  const [expire, setExpire] = useState("");
   const [password, setPassword] = useState("");
-  const [passwordVisibility, setPasswordVisibility] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-  const usr = auth.getUser().username;
+  const usr = localStorage.getItem("user");
+  const [recover, setRecover] = useState(true);
+  const [confirm, setConfirm] = useState(false);
+  const [save, setSave] = useState(false);
+  const [randomError, setRandomError] = useState(false);
+  const [show, setShow] = useState(false);
 
   useEffect(() => {
-    setUserName(usr);
-    axios
-      .post("http://localhost:5000/user/getsingle", {
-        username: usr,
-      })
-      .then((res) => {
-        if (res.status !== 200) {
-          window.location.href = "/";
-        } else if (!res.data.status) {
-          window.location.href = "/";
-        }
-      })
-      .catch((err) => {
-        window.location.href = "/";
-      });
+    if (!usr) {
+      window.location.href = "/";
+    }
   }, [usr]);
+
+  const updateUserPassword = useSelector(
+    (state: any) => state.updateUserPassword
+  );
+  const { loadingPassword, dataPassword, errorPassword } = updateUserPassword;
+  const randomString = useSelector((state: any) => state.randomString);
+  let { loadingRandom, dataRandom, errorRandom } = randomString;
+  const dispatch = useDispatch();
 
   const handleChangeRanndom = (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -56,67 +49,32 @@ const Forgot = () => {
     setPassword(data.value);
   };
 
-  const forgotValidation = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setRandomGenErr("");
-    setRandomGenMsg("");
-    setSuccessMessage("");
-    if (passwordVisibility) {
-      const credentials = {
-        username: username,
-        password: password,
-      };
-
-      axios
-        .post("http://localhost:5000/user/setpassword", credentials)
-        .then((res) => {
-          if (res.status === 200) {
-            setSuccessMessage("Password chainged to: " + password);
-            setTimeout(() => {
-              window.location.href = "/";
-            }, 5000);
-          } else {
-            setRandomGenErr("Error: Try again!");
-          }
-        })
-        .catch((err) => {
-          setRandomGenErr("Error: Try again!");
-        });
-    } else if (randomVisibility) {
-      //shit
-      if (randomGen === random) {
-        setPasswordVisibility(true);
-        setRandomVisibility(false);
-      } else {
-        setRandomGenErr("Error: Try again!");
-      }
+  const handleConfirm = () => {
+    if (random !== "" && random === dataRandom.data.random) {
+      setConfirm(false);
+      setSave(true);
+      setShow(false);
     } else {
-      //mail thing
-      if (!username) {
-        window.location.href = "/";
-      } else {
-        axios
-          .post("http://localhost:5000/user/getrandom", { username: username })
-          .then((res) => {
-            if (res.status === 200) {
-              setRandomGen(res.data.random);
-              setRandomGenMsg("Verification code sended!");
-              setRandomVisibility(true);
-              for (let i = 0; i < 120000; i += 1000) {
-                setTimeout(() => {
-                  setCounter(119 - i / 1000);
-                  if (i === 119000) {
-                    setExpire("Expired!");
-                    setRandomGen("");
-                  }
-                }, i);
-              }
-            }
-          })
-          .catch((err) => {
-            setRandomGenErr("Error: Try again!");
-          });
-      }
+      setShow(false);
+      setRandomError(true);
+    }
+  };
+
+  const handleSave = () => {
+    if (password !== "") {
+      dispatch(updatePassword(usr!, password));
+      //setShow(false);
+    }
+  };
+
+  const handleRecover = () => {
+    if (usr) {
+      setShow(true);
+      dispatch(getRandomString(usr));
+      setRecover(false);
+      setConfirm(true);
+    } else {
+      setRandomError(true);
     }
   };
 
@@ -130,52 +88,55 @@ const Forgot = () => {
               <Header as="h3" textAlign="center" block>
                 User Management System - Recover Password
               </Header>
+              {dataPassword ? (
+                <Header as="h4" style={{ backgroundColor: "#E9FDD1" }} block>
+                  <div style={{ display: "none" }}>
+                    {setTimeout(() => {
+                      window.location.href = "/";
+                    }, 5000)}
+                  </div>
+                  Password Changed!
+                  <br />
+                  Redirecting ...
+                </Header>
+              ) : null}
 
-              {randomGenErr ? (
+              {dataRandom && show ? (
+                <Header as="h4" style={{ backgroundColor: "#E9FDD1" }} block>
+                  Verification code sended, Check your mails!
+                </Header>
+              ) : null}
+
+              {errorPassword || errorRandom || randomError ? (
                 <Header as="h4" style={{ backgroundColor: "#FDD4D1" }} block>
-                  "Error: Try again!"
+                  <div style={{ display: "none" }}>
+                    {setTimeout(() => {
+                      window.location.href = "/";
+                    }, 5000)}
+                  </div>
+                  Error Please try Again!
+                  <br />
+                  Redirecting ...
                 </Header>
               ) : null}
 
-              {randomGenMsg ? (
-                <Header as="h4" style={{ backgroundColor: "#E9FDD1" }} block>
-                  "Verification code sended Please check your mails!"
-                </Header>
-              ) : null}
-
-              {successMessage ? (
-                <Header as="h4" style={{ backgroundColor: "#E9FDD1" }} block>
-                  "Password chainged success fully!"
-                </Header>
-              ) : null}
-
-              <Form onSubmit={forgotValidation}>
+              <Form>
                 <Form.Field>
-                  <h4 className="ui red header">Username (E-MAIL)</h4>
+                  <h4>Username (E-MAIL)</h4>
                   <Form.Input
                     type="email"
                     placeholder="User Name"
                     name="username"
-                    value={username}
+                    value={usr}
                     disabled
                     style={{ fontSize: "15px", fontWeight: "bold" }}
                     error
                     focus
                   />
                 </Form.Field>
-                {randomVisibility ? (
+                {dataRandom && !save ? (
                   <Form.Field>
-                    <h4 className="ui red header">
-                      Validation text{" ===> "}
-                      {Math.floor((counter % 3600) / 60) < 10
-                        ? "0" + Math.floor((counter % 3600) / 60)
-                        : Math.floor((counter % 3600) / 60)}{" "}
-                      :{" "}
-                      {Math.floor((counter % 3600) % 60) < 10
-                        ? "0" + Math.floor((counter % 3600) % 60)
-                        : Math.floor((counter % 3600) % 60)}{" "}
-                      {" " + expire}
-                    </h4>
+                    <h4>Validation text</h4>
                     <Form.Input
                       type="text"
                       placeholder="Validation text"
@@ -184,13 +145,14 @@ const Forgot = () => {
                       onChange={handleChangeRanndom}
                       style={{ fontSize: "15px", fontWeight: "bold" }}
                       focus
+                      required
                     />
                   </Form.Field>
                 ) : null}
 
-                {passwordVisibility ? (
+                {save ? (
                   <Form.Field>
-                    <h4 className="ui red header">New password</h4>
+                    <h4>New password</h4>
                     <Form.Input
                       type="password"
                       placeholder="New password"
@@ -199,21 +161,38 @@ const Forgot = () => {
                       onChange={handleChangePassword}
                       style={{ fontSize: "15px", fontWeight: "bold" }}
                       focus
+                      required
                     />
                   </Form.Field>
                 ) : null}
 
                 <Grid columns={4} divided>
                   <Grid.Row>
-                    <Grid.Column>
-                      <Button type="submit">Recover</Button>
-                    </Grid.Column>
-
+                    {recover ? (
+                      <Grid.Column>
+                        <Button onClick={handleRecover}>Recover</Button>
+                      </Grid.Column>
+                    ) : null}
+                    {confirm ? (
+                      <Grid.Column>
+                        <Button onClick={handleConfirm}>Confirm</Button>
+                      </Grid.Column>
+                    ) : null}
+                    {save ? (
+                      <Grid.Column>
+                        <Button onClick={handleSave}>Save</Button>
+                      </Grid.Column>
+                    ) : null}
                     <Grid.Column>
                       <Link to="/">
                         <Button>Back</Button>
                       </Link>
                     </Grid.Column>
+                    {loadingPassword || loadingRandom ? (
+                      <Grid.Column>
+                        <Loader size="small" active></Loader>
+                      </Grid.Column>
+                    ) : null}
                   </Grid.Row>
                 </Grid>
               </Form>

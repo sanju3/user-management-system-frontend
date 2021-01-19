@@ -1,37 +1,52 @@
 import { RouteComponentProps } from "react-router-dom";
-import axios from "axios";
-import React, { useState } from "react";
-import { Header } from "semantic-ui-react";
+import React, { useEffect } from "react";
+import { Grid, Header, Loader } from "semantic-ui-react";
+import { useDispatch, useSelector } from "react-redux";
+import { confirmUser } from "../actions/userActons";
 
 const Confirm = (
   props: RouteComponentProps<{ username?: string; random?: string }>
 ) => {
-  const [status, setStatus] = useState(0);
-  const [message, setMessage] = useState("");
   const username = props.match.params.username;
   const random = props.match.params.random;
+  const userConfirm = useSelector((state: any) => state.userConfirm);
+  const { loading, data, error } = userConfirm;
+  const dispatch = useDispatch();
 
-  axios
-    .get(`http://localhost:5000/user/verify/${username}/${random}`)
-    .then((response) => {
-      if (status === 0) {
-        setStatus(response.status);
-        setMessage(response.data);
-      }
-
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 5000);
-
-      console.log(response.status);
-    })
-    .catch((error) => console.log(`Error found ${error}`));
+  useEffect(() => {
+    if (username && random) dispatch(confirmUser(username, random));
+  }, [dispatch, random, username]);
 
   return (
     <Header textAlign="center" as="h3" block>
-      {status}: {message}
-      <br />
-      redirecting....
+      {loading ? (
+        <Grid.Column>
+          Processing <Loader size="small" active></Loader>
+        </Grid.Column>
+      ) : null}
+      {error ? (
+        <Header as="h4" style={{ backgroundColor: "#FDD4D1" }} block>
+          "Error Please try Again!" Redirecting ...
+          <div style={{ display: "none" }}>
+            {setTimeout(() => {
+              window.location.href = "/";
+            }, 5000)}
+          </div>
+          <br />
+        </Header>
+      ) : null}
+      {data ? (
+        <Header as="h4" style={{ backgroundColor: "#E9FDD1" }} block>
+          Account Activated!
+          <br />
+          Redirecting ...
+          <div style={{ display: "none" }}>
+            {setTimeout(() => {
+              window.location.href = "/";
+            }, 5000)}
+          </div>
+        </Header>
+      ) : null}
     </Header>
   );
 };

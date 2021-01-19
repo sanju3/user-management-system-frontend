@@ -1,6 +1,6 @@
-import axios from "axios";
-import React, { ChangeEvent, FormEvent, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { Link, RouteComponentProps } from "react-router-dom";
 import {
   Button,
   Form,
@@ -9,18 +9,32 @@ import {
   InputOnChangeData,
   Loader,
 } from "semantic-ui-react";
+import { getUserSingle, login } from "../actions/userActons";
 import auth from "../auth";
 import { emailValidation } from "./Signup";
 
-const Login = (props: any) => {
+const Login = (props: RouteComponentProps) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [fillField, setFillField] = useState({});
   const [badEmail, setBadEmail] = useState({});
-  const [responseStatus, setResponseStatus] = useState(0);
-  const [color, setColor] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [forgotpass, setForgotpass] = useState(false);
+  const userLogin = useSelector((state: any) => state.userLogin);
+  const { loading, data, error } = userLogin;
+  const getUser = useSelector((state: any) => state.getUser);
+  const { dataUser } = getUser;
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    if (dataUser) {
+      localStorage.setItem("user", username);
+    }
+
+    if (data) {
+      localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("token", data.token);
+      props.history.push("/user");
+    }
+  }, [data, dataUser, props.history, username]);
 
   const handleChange = (
     event: ChangeEvent<HTMLInputElement>,
@@ -51,41 +65,8 @@ const Login = (props: any) => {
     } else if (!emailValidation(credentials.username)) {
       setBadEmail({ error: "Email error!" });
     } else {
-      setLoading(true);
-      axios
-        .post("http://localhost:5000/user/login", credentials)
-        .then((response) => {
-          setLoading(false);
-
-          if (response.status === 200) {
-            localStorage.setItem("user", JSON.stringify(response.data.user));
-            localStorage.setItem("token", response.data.token);
-            props.history.push("/user");
-          }
-        })
-        .catch((err) => {
-          setLoading(false);
-          if (err.response !== undefined) {
-            if (err.response.status === 403) {
-              setResponseStatus(403);
-              setColor("#FDD4D1");
-            } else if (err.response.status === 500) {
-              setResponseStatus(500);
-              setColor("#FDD4D1");
-            } else if (err.response.status === 404) {
-              setResponseStatus(404);
-              setColor("#FDD4D1");
-            } else if (err.response.status === 401) {
-              setResponseStatus(401);
-              setColor("#FDD4D1");
-              setForgotpass(true);
-            }
-          } else {
-            setResponseStatus(500);
-            setColor("#FDD4D1");
-            setForgotpass(true);
-          }
-        });
+      dispatch(login(credentials));
+      dispatch(getUserSingle(username));
     }
   };
 
@@ -100,27 +81,9 @@ const Login = (props: any) => {
                 User Management System - Login
               </Header>
 
-              {responseStatus === 500 ? (
-                <Header as="h4" style={{ backgroundColor: color }} block>
-                  Server Error: please try again!
-                </Header>
-              ) : null}
-
-              {responseStatus === 401 ? (
-                <Header as="h4" style={{ backgroundColor: color }} block>
-                  Invalid password: please try again!
-                </Header>
-              ) : null}
-
-              {responseStatus === 403 ? (
-                <Header as="h4" style={{ backgroundColor: color }} block>
-                  Account not activated: please check your mails!
-                </Header>
-              ) : null}
-
-              {responseStatus === 404 ? (
-                <Header as="h4" style={{ backgroundColor: color }} block>
-                  User not found: please try again!
+              {error ? (
+                <Header as="h4" style={{ backgroundColor: "#FDD4D1" }} block>
+                  Invalid username or password!
                 </Header>
               ) : null}
 
@@ -149,7 +112,7 @@ const Login = (props: any) => {
                     required
                   />
                 </Form.Field>
-                {forgotpass ? (
+                {error && dataUser ? (
                   <Form.Field>
                     <p>
                       Forgot Password? <Link to="/forgot">Click here!</Link>

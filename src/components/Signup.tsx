@@ -1,6 +1,5 @@
 import React, { ChangeEvent, useState, FormEvent } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
 import {
   Button,
   Form,
@@ -9,6 +8,8 @@ import {
   InputOnChangeData,
   Loader,
 } from "semantic-ui-react";
+import { useDispatch, useSelector } from "react-redux";
+import { signup } from "../actions/userActons";
 const mailformat = /^[\w-]+(\.[\w-]+)*@([a-z0-9-]+(\.[a-z0-9-]+)*?\.[a-z]{2,6}|(\d{1,3}\.){3}\d{1,3})(:\d{4})?$/;
 
 export const emailValidation = (email: string) => email.match(mailformat);
@@ -22,7 +23,9 @@ const Signup = () => {
   const [usernamevalidation, setusernameValidation] = useState({});
   const [responseStatus, setResponseStatus] = useState(0);
   const [color, setColor] = useState("");
-  const [loading, setLoading] = useState(false);
+  const userSignup = useSelector((state: any) => state.userSignup);
+  const { loading, data, error } = userSignup;
+  const dispatch = useDispatch();
 
   const handleChange = (
     event: ChangeEvent<HTMLInputElement>,
@@ -70,35 +73,7 @@ const Signup = () => {
       setResponseStatus(124);
       setColor("#FDD4D1");
     } else {
-      setLoading(true);
-      axios
-        .post("http://localhost:5000/user/register", credentials)
-        .then((response) => {
-          setLoading(false);
-
-          if (response.status === 200) {
-            setResponseStatus(200);
-            setColor("#E9FDD1");
-            setTimeout(() => {
-              window.location.href = "/";
-            }, 5000);
-          }
-        })
-        .catch((error) => {
-          setLoading(false);
-          if (error.response !== undefined) {
-            if (error.response.status === 403) {
-              setResponseStatus(403);
-              setColor("#FDD4D1");
-            } else {
-              setResponseStatus(500);
-              setColor("#FDD4D1");
-            }
-          } else {
-            setResponseStatus(500);
-            setColor("#FDD4D1");
-          }
-        });
+      dispatch(signup(credentials));
     }
   };
 
@@ -113,22 +88,21 @@ const Signup = () => {
                 User Management System - Signup
               </Header>
 
-              {responseStatus === 200 ? (
-                <Header as="h4" style={{ backgroundColor: color }} block>
+              {data ? (
+                <Header as="h4" style={{ backgroundColor: "#E9FDD1" }} block>
                   Registration Successfull! Verification mail sended!
                   Redirecting ...
+                  <div style={{ display: "none" }}>
+                    {setTimeout(() => {
+                      window.location.href = "/";
+                    }, 5000)}
+                  </div>
                 </Header>
               ) : null}
 
-              {responseStatus === 500 ? (
-                <Header as="h4" style={{ backgroundColor: color }} block>
-                  Server Error: please try again!
-                </Header>
-              ) : null}
-
-              {responseStatus === 403 ? (
-                <Header as="h4" style={{ backgroundColor: color }} block>
-                  Username already exists: please try again!
+              {error ? (
+                <Header as="h4" style={{ backgroundColor: "#FDD4D1" }} block>
+                  {error}
                 </Header>
               ) : null}
 
@@ -188,7 +162,7 @@ const Signup = () => {
                   />
                 </Form.Field>
                 <Form.Field>
-                  <label>Password Re</label>
+                  <label>Re-Enter Password</label>
                   <Form.Input
                     type="Password"
                     placeholder="Password Re"
